@@ -1,0 +1,1 @@
+ALTER TABLE app_user ADD COLUMN development_only BOOLEAN NOT NULL DEFAULT FALSE;

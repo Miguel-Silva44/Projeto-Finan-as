@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acesso · Controle Financeiro</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" />
+    <script defer th:src="@{/js/app.js}"></script>
+  </head>
+  <body class="auth-body">
+    <main class="auth-shell">
+      <section class="auth-story">
+        <a class="brand" href="/auth/login"
+          ><span class="brand-icon">F</span> finanças<span class="brand-dot"
+            >.</span
+          ></a
+        ><span class="eyebrow">SEU DINHEIRO, COM CLAREZA</span>
+        <h1>Mais controle.<br />Mais tranquilidade.</h1>
+        <p>
+          Contas, cartões e planos em um só lugar. Um passo simples para cuidar
+          do seu futuro.
+        </p>
+        <div class="story-lines">
+          <span>01 <b>Entenda para onde seu dinheiro vai</b></span
+          ><span>02 <b>Organize seus próximos compromissos</b></span
+          ><span>03 <b>Planeje o mês com confiança</b></span>
+        </div>
+        <small>Seus dados são privados. Seu espaço é só seu.</small>
+      </section>
+      <section class="auth-form">
+        <div class="auth-heading">
+          <span class="eyebrow">BEM-VINDO AO SEU ESPAÇO</span>
+          <h2
+            th:text="${mode=='register'?'Comece a se organizar':mode=='recover'?'Recupere seu acesso':mode=='reset'?'Crie uma nova senha':mode=='verify'?'Confirme seu e-mail':'Que bom ter você aqui'}"
+          >
+            Acesse sua conta
+          </h2>
+          <p>Controle financeiro para uma vida mais leve.</p>
+        </div>
+        <div
+          class="notice success"
+          role="status"
+          th:if="${message}"
+          th:text="${message}"
+        ></div>
+        <div class="notice danger" role="alert" th:if="${param.error}">
+          Não foi possível entrar. Confira e-mail, senha e confirmação do
+          e-mail.
+        </div>
+        <div class="notice" th:if="${param.expired}">
+          Sua sessão expirou ou foi encerrada. Entre novamente.
+        </div>
+        <div class="notice" th:if="${param.logout}">
+          Você saiu com segurança.
+        </div>
+        <div class="notice" th:if="${param.deleted}">
+          Conta desativada. Seus dados serão removidos pela rotina de exclusão.
+        </div>
+        <form
+          method="post"
+          th:action="@{/auth/{mode}(mode=${mode})}"
+          class="stack"
+        >
+          <label th:if="${mode=='register'}"
+            >Seu nome<input
+              name="name"
+              required
+              maxlength="100"
+              autocomplete="name"
+              placeholder="Como podemos chamar você?"
+          /></label>
+          <label th:if="${mode=='login' or mode=='register' or mode=='recover'}"
+            >E-mail<input
+              type="email"
+              name="email"
+              required
+              maxlength="200"
+              autocomplete="email"
+              placeholder="voce@exemplo.com"
+          /></label>
+          <label th:if="${mode=='login' or mode=='register' or mode=='reset'}"
+            >Senha<input
+              type="password"
+              name="password"
+              required
+              th:minlength="${mode=='login'?1:12}"
+              maxlength="100"
+              th:autocomplete="${mode=='login'?'current-password':'new-password'}"
+              placeholder="Sua senha segura"
+            /><small th:if="${mode!='login'}"
+              >Use pelo menos 12 caracteres.</small
+            ></label
+          >
+          <input
+            type="hidden"
+            name="token"
+            th:if="${mode=='reset' or mode=='verify'}"
+            th:value="${token}"
+          />
+          <p th:if="${mode=='verify'}">
+            Confirme para ativar sua conta. Este link pode ser usado uma única
+            vez.
+          </p>
+          <button
+            class="button primary wide"
+            th:text="${mode=='login'?'Entrar na minha conta →':mode=='register'?'Criar minha conta →':mode=='recover'?'Enviar link de recuperação':mode=='verify'?'Confirmar meu e-mail':'Atualizar senha'}"
+          ></button>
+        </form>
+        <div class="auth-links">
+          <a th:if="${mode=='login'}" href="/auth/recover"
+            >Esqueci minha senha</a
+          >
+          <p th:if="${mode=='login'}">
+            Ainda não tem conta?
+            <a href="/auth/register">Criar conta gratuita</a>
+          </p>
+          <a th:if="${mode!='login'}" href="/auth/login"
+            >← Voltar para entrar</a
+          >
+        </div>
+        <small class="auth-footer"
+          >Organização hoje. Tranquilidade amanhã.</small
+        >
+      </section>
+    </main>
+    <div class="offline" role="alert" hidden>
+      Você está sem conexão. Mantenha esta página aberta e tente novamente
+      quando a conexão voltar.
+    </div>
+  </body>
+</html>

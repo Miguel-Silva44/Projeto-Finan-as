@@ -1,0 +1,75 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <div th:remove="tag" th:fragment="identity">
+      <input type="hidden" name="key" th:value="${@fmt.key()}" /><input
+        type="hidden"
+        name="id"
+        th:value="${edit['id']}"
+      /><input type="hidden" name="version" th:value="${edit['version']}" />
+    </div>
+    <label th:fragment="account(field,title)" th:text="${title}"
+      >Conta<select th:name="${field}" required>
+        <option value="">Selecione a conta</option>
+        <option
+          th:each="account:${accounts}"
+          th:if="${!account['archived']}"
+          th:value="${account['id']}"
+          th:selected="${edit[field]==account['id']}"
+          th:text="${account['name']}"
+        ></option></select
+    ></label>
+    <label th:fragment="accountSelect(field,title)"
+      ><span th:text="${title}"></span
+      ><select th:name="${field}" required>
+        <option value="">Selecione a conta</option>
+        <option
+          th:each="account:${accounts}"
+          th:if="${!account['archived']}"
+          th:value="${account['id']}"
+          th:selected="${edit[field]==account['id']}"
+          th:text="${account['name']}"
+        ></option></select
+    ></label>
+    <label th:fragment="categorySelect"
+      ><span>Categoria</span
+      ><select name="category_id" required>
+        <option value="">Selecione a categoria</option>
+        <option
+          th:each="category:${categories}"
+          th:if="${!category['archived']}"
+          th:value="${category['id']}"
+          th:attr="data-kind=${category['kind']}"
+          th:selected="${edit['category_id']==category['id']}"
+          th:text="${category['name']+' · '+category['kind']}"
+        ></option></select
+    ></label>
+    <label th:fragment="kind"
+      ><span>Tipo</span
+      ><select name="kind" data-kind-select>
+        <option value="DESPESA" th:selected="${edit['kind']=='DESPESA'}">
+          Despesa
+        </option>
+        <option value="RECEITA" th:selected="${edit['kind']=='RECEITA'}">
+          Receita
+        </option>
+      </select></label
+    >
+    <label th:fragment="amount"
+      ><span>Valor (R$)</span
+      ><input
+        name="amount"
+        required
+        inputmode="decimal"
+        placeholder="0,00"
+        th:value="${edit['amount']!=null?@fmt.decimal(edit['amount']):''}"
+    /></label>
+    <div th:remove="tag" th:fragment="actionFields(row)">
+      <input type="hidden" name="key" th:value="${@fmt.key()}" /><input
+        type="hidden"
+        name="version"
+        th:value="${row['version']}"
+      />
+    </div>
+  </body>
+</html>

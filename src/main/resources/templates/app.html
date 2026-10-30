@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title th:text="${@fmt.label(page)+' · Finanças'}"></title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <script defer src="/js/app.js"></script>
+  </head>
+  <body>
+    <a href="#content" class="skip">Ir para o conteúdo</a>
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard"
+        ><span class="brand-icon">F</span> finanças<span class="brand-dot"
+          >.</span
+        ></a
+      >
+      <div class="workspace-label">MEU ESPAÇO FINANCEIRO</div>
+      <nav aria-label="Navegação principal">
+        <a
+          th:each="item:${ {'dashboard','transactions','accounts','cards','budgets','reports'} }"
+          th:href="@{/{item}(item=${item})}"
+          th:classappend="${page==item?'active':''}"
+          ><span
+            class="nav-icon"
+            th:text="${item=='dashboard'?'◫':item=='transactions'?'⇄':item=='accounts'?'▤':item=='cards'?'▱':item=='budgets'?'◎':'▥'}"
+          ></span
+          ><span th:text="${@fmt.label(item)}"></span
+        ></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <p class="workspace-label">ORGANIZAÇÃO</p>
+        <nav aria-label="Configurações">
+          <a
+            href="/recurrences"
+            th:classappend="${page=='recurrences'?'active':''}"
+            >↻ <span>Recorrências</span></a
+          ><a
+            href="/categories"
+            th:classappend="${page=='categories'?'active':''}"
+            >⌗ <span>Categorias</span></a
+          ><a href="/audit" th:classappend="${page=='audit'?'active':''}"
+            >◷ <span>Histórico</span></a
+          ><a href="/settings" th:classappend="${page=='settings'?'active':''}"
+            >⚙ <span>Configurações</span></a
+          >
+        </nav>
+        <div class="sidebar-tip">
+          <span>UM PASSO DE CADA VEZ</span>
+          <p>Pequenas escolhas hoje.<br />Mais liberdade amanhã.</p>
+        </div>
+      </div>
+    </aside>
+    <div class="main-shell">
+      <header class="topbar">
+        <span>Seu dinheiro. Seus planos.</span>
+        <div class="user-menu">
+          <span
+            class="avatar"
+            th:text="${#strings.substring(profile['name'],0,1)}"
+          ></span
+          ><span th:text="${profile['name']}"></span>
+          <form method="post" th:action="@{/auth/logout}">
+            <button class="text-button" title="Sair com segurança">
+              Sair ↗
+            </button>
+          </form>
+        </div>
+      </header>
+      <main id="content">
+        <div class="page-heading">
+          <div>
+            <p
+              class="eyebrow"
+              th:text="${page=='dashboard'?'UM NOVO OLHAR PARA SUAS FINANÇAS':'CONTROLE FINANCEIRO PESSOAL'}"
+            ></p>
+            <h1 th:text="${@fmt.label(page)}"></h1>
+            <p
+              class="muted"
+              th:text="${page=='dashboard'?'Tudo o que você precisa para tomar boas decisões.':'Organize cada detalhe, sem perder a visão do todo.'}"
+            ></p>
+          </div>
+          <a class="button primary" href="/transactions#entry-form"
+            >＋ Novo lançamento</a
+          >
+        </div>
+        <div
+          class="notice success"
+          role="status"
+          th:if="${message}"
+          th:text="${message}"
+        ></div>
+
+        <div th:remove="tag" th:if="${page=='dashboard'}">
+          <form method="get" class="period-picker">
+            <label
+              >Mês de competência<input
+                type="month"
+                name="month"
+                th:value="${month}"
+                required /></label
+            ><label
+              >Projeção até<input
+                type="date"
+                name="horizon"
+                th:value="${horizon}"
+                th:min="${today}"
+                required /></label
+            ><button class="button secondary">Atualizar visão</button>
+          </form>
+          <section class="metric-grid" aria-label="Resumo financeiro">
+            <a class="metric featured" href="/accounts"
+              ><span>SALDO ATUAL EM CONTAS</span
+              ><strong th:text="${@fmt.money(summary['balance'])}"></strong
+              ><small th:text="${'Realizado até '+@fmt.date(today)}"></small
+              ><span class="metric-mark">↗</span></a
+            ><a
+              class="metric"
+              th:href="@{/reports(from=${month.atDay(1)},to=${month.atEndOfMonth()})}"
+              ><span>RECEITAS DO MÊS <b class="positive">↓</b></span
+              ><strong th:text="${@fmt.money(summary['income'])}"></strong
+              ><small>Confirmadas por competência</small></a
+            ><a
+              class="metric"
+              th:href="@{/reports(from=${month.atDay(1)},to=${month.atEndOfMonth()})}"
+              ><span>DESPESAS DO MÊS <b class="negative">↑</b></span
+              ><strong th:text="${@fmt.money(summary['expense'])}"></strong
+              ><small>Contas realizadas + parcelas</small></a
+            ><a
+              class="metric"
+              th:href="@{/reports(from=${month.atDay(1)},to=${month.atEndOfMonth()})}"
+              ><span>RESULTADO DO MÊS</span
+              ><strong
+                th:classappend="${summary['result']<0?'negative':'positive'}"
+                th:text="${@fmt.money(summary['result'])}"
+              ></strong
+              ><small>Receitas menos despesas</small></a
+            >
+          </section>
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Seu mês, em perspectiva</h2>
+                  <p>Gastos confirmados por categoria</p>
+                </div>
+                <a href="/reports" class="link">Ver relatório ↗</a>
+              </div>
+              <div class="breakdown" th:if="${summary['expense']>0}">
+                <div
+                  class="category-line"
+                  th:each="category:${summary['breakdown']}"
+                  th:if="${category['consumed']>0}"
+                >
+                  <div>
+                    <a
+                      th:href="@{/reports(category_id=${category['id']},from=${month.atDay(1)},to=${month.atEndOfMonth()})}"
+                      th:text="${category['name']}"
+                    ></a
+                    ><strong
+                      th:text="${@fmt.money(category['consumed'])}"
+                    ></strong>
+                  </div>
+                  <progress
+                    th:value="${category['consumed']}"
+                    th:max="${summary['expense']}"
+                    th:attr="aria-label=${category['name']}"
+                  ></progress>
+                </div>
+              </div>
+              <div class="empty" th:if="${summary['expense']==0}">
+                <span class="empty-icon">▥</span>
+                <h3>Seu mês começa aqui</h3>
+                <p>Registre suas despesas e veja para onde seu dinheiro vai.</p>
+                <a href="/transactions#entry-form" class="link"
+                  >Adicionar primeiro lançamento →</a
+                >
+              </div>
+              <div class="projection">
+                <span
+                  >Olhando para a frente<small
+                    th:text="${'Saldo projetado até '+@fmt.date(horizon)+' · inclui pendências e faturas'}"
+                  ></small></span
+                ><strong th:text="${@fmt.money(summary['projected'])}"></strong>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Minhas contas</h2>
+                  <p>Seu saldo em cada lugar</p>
+                </div>
+                <a href="/accounts" class="link">Gerenciar ↗</a>
+              </div>
+              <div th:if="${#lists.isEmpty(accounts)}" class="empty">
+                <span class="empty-icon">▤</span>
+                <h3>Adicione sua primeira conta</h3>
+                <p>Comece com seu banco ou sua carteira.</p>
+                <a href="/accounts" class="button secondary">＋ Criar conta</a>
+              </div>
+              <div class="account-line" th:each="account:${accounts}">
+                <span class="account-icon">▤</span
+                ><span
+                  ><b th:text="${account['name']}"></b
+                  ><small
+                    th:text="${account['archived']?'Arquivada':account['kind']}"
+                  ></small></span
+                ><strong
+                  th:classappend="${account['balance']<0?'negative':''}"
+                  th:text="${@fmt.money(account['balance'])}"
+                ></strong>
+              </div>
+            </section>
+          </div>
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>No seu radar</h2>
+                <p>Compromissos vencidos e dos próximos 7 dias</p>
+              </div>
+              <a
+                th:href="@{/transactions(status='PENDENTE',basis='due_date')}"
+                class="link"
+                >Ver pendências ↗</a
+              >
+            </div>
+            <div
+              class="empty compact"
+              th:if="${#lists.isEmpty(summary['due'])}"
+            >
+              Tudo tranquilo por aqui. Nenhum lançamento pendente nos próximos
+              dias.
+            </div>
+            <div class="due-line" th:each="entry:${summary['due']}">
+              <span
+                class="date-tile"
+                th:text="${@fmt.date(entry['due_date'])}"
+              ></span
+              ><span
+                ><a
+                  th:href="@{/transactions(edit=${entry['id']})}"
+                  th:text="${entry['description']}"
+                ></a
+                ><small th:text="${entry['account_name']}"></small></span
+              ><span
+                class="badge"
+                th:classappend="${entry['due_date'].toString()<today.toString()?'late':''}"
+                th:text="${entry['due_date'].toString()<today.toString()?'Vencido':'Pendente'}"
+              ></span
+              ><strong th:text="${@fmt.money(entry['amount'])}"></strong>
+            </div>
+            <div
+              class="due-line"
+              th:each="invoice:${summary['invoices']}"
+              th:if="${invoice['status']!='PAGA' and invoice['due_date'].toString()<=today.plusDays(7).toString()}"
+            >
+              <span
+                class="date-tile"
+                th:text="${@fmt.date(invoice['due_date'])}"
+              ></span
+              ><a
+                href="/cards"
+                th:text="${'Fatura · '+invoice['card_name']}"
+              ></a
+              ><strong th:text="${@fmt.money(invoice['total'])}"></strong>
+            </div>
+          </section>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='accounts'}">
+          <div class="two-columns">
+            <section class="panel">
+              <div class="panel-heading"><h2>Contas e saldos</h2></div>
+              <p class="empty compact" th:if="${#lists.isEmpty(accounts)}">
+                Você ainda não tem contas. Cadastre a primeira ao lado.
+              </p>
+              <article class="account-detail" th:each="account:${accounts}">
+                <div class="account-line">
+                  <span class="account-icon">▤</span
+                  ><span
+                    ><b th:text="${account['name']}"></b
+                    ><small
+                      th:text="${account['kind']+(account['archived']?' · Arquivada':'')}"
+                    ></small></span
+                  ><strong th:text="${@fmt.money(account['balance'])}"></strong>
+                </div>
+                <div class="actions">
+                  <a
+                    class="link"
+                    th:href="@{/reports(basis='cash',account_id=${account['id']})}"
+                    >Ver extrato</a
+                  ><a
+                    th:if="${!account['archived']}"
+                    class="link"
+                    th:href="@{/accounts(edit=${account['id']})}"
+                    >Editar</a
+                  >
+                  <form
+                    th:if="${!account['archived']}"
+                    method="post"
+                    th:action="@{/account/{id}/archive(id=${account['id']})}"
+                  >
+                    <div
+                      th:replace="~{fragments/forms::actionFields(${account})}"
+                    ></div>
+                    <button class="text-button">Arquivar</button>
+                  </form>
+                </div>
+              </article>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <h2
+                  th:text="${edit['id']!=null?'Editar conta':'Adicionar conta'}"
+                ></h2>
+              </div>
+              <form method="post" th:action="@{/accounts}" class="stack">
+                <div th:replace="~{fragments/forms::identity}"></div>
+                <label
+                  >Nome da conta<input
+                    name="name"
+                    required
+                    maxlength="100"
+                    placeholder="Ex.: Conta principal"
+                    th:value="${edit['name']}" /></label
+                ><label
+                  >Tipo<select name="kind">
+                    <option
+                      value="CORRENTE"
+                      th:selected="${edit['kind']=='CORRENTE'}"
+                    >
+                      Conta corrente
+                    </option>
+                    <option
+                      value="POUPANCA"
+                      th:selected="${edit['kind']=='POUPANCA'}"
+                    >
+                      Poupança
+                    </option>
+                    <option
+                      value="CARTEIRA"
+                      th:selected="${edit['kind']=='CARTEIRA'}"
+                    >
+                      Carteira
+                    </option>
+                  </select></label
+                >
+                <div class="form-grid">
+                  <label
+                    >Saldo inicial (R$)<input
+                      name="opening"
+                      inputmode="decimal"
+                      required
+                      th:value="${edit['opening']!=null?@fmt.decimal(edit['opening']):'0,00'}" /></label
+                  ><label
+                    >Data inicial<input
+                      type="date"
+                      name="reference_date"
+                      required
+                      th:max="${today}"
+                      th:value="${edit['reference_date']?:today}"
+                  /></label>
+                </div>
+                <label class="checkbox" th:if="${edit['id']!=null}"
+                  ><input type="checkbox" name="confirm" value="yes" required />
+                  Confirmo a alteração e o recálculo do saldo.</label
+                ><button class="button primary">Salvar conta</button
+                ><a th:if="${edit['id']!=null}" href="/accounts"
+                  >Cancelar edição</a
+                >
+              </form>
+            </section>
+          </div>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='categories'}">
+          <div class="two-columns">
+            <section class="panel">
+              <div class="panel-heading"><h2>Suas categorias</h2></div>
+              <article class="category-row" th:each="category:${categories}">
+                <span
+                  ><b th:text="${category['name']}"></b
+                  ><small
+                    th:text="${category['kind']+(category['archived']?' · Arquivada':'')}"
+                  ></small
+                ></span>
+                <div class="actions" th:if="${!category['archived']}">
+                  <a
+                    th:href="@{/categories(edit=${category['id']})}"
+                    class="link"
+                    >Editar</a
+                  >
+                  <form
+                    method="post"
+                    th:action="@{/category/{id}/archive(id=${category['id']})}"
+                  >
+                    <div
+                      th:replace="~{fragments/forms::actionFields(${category})}"
+                    ></div>
+                    <button class="text-button">Arquivar</button>
+                  </form>
+                </div>
+              </article>
+            </section>
+            <section class="panel">
+              <div class="panel-heading"><h2>Organizar categoria</h2></div>
+              <form method="post" th:action="@{/categories}" class="stack">
+                <div th:replace="~{fragments/forms::identity}"></div>
+                <label
+                  >Nome<input
+                    name="name"
+                    th:value="${edit['name']}"
+                    maxlength="100"
+                    required
+                /></label>
+                <div th:replace="~{fragments/forms::kind}"></div>
+                <button class="button primary">Salvar categoria</button>
+              </form>
+            </section>
+          </div>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='transactions'}">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Seus lançamentos</h2>
+                <p>
+                  Competência, vencimento e realização são datas independentes.
+                </p>
+              </div>
+              <a
+                class="button secondary export-filter"
+                href="/exports/transactions"
+                >↓ Exportar CSV</a
+              >
+            </div>
+            <form method="get" class="filters">
+              <label
+                >Buscar<input
+                  name="q"
+                  th:value="${query['q']}"
+                  placeholder="Descrição do lançamento" /></label
+              ><label
+                >Base<select name="basis">
+                  <option value="competence">Competência</option>
+                  <option
+                    value="due_date"
+                    th:selected="${query['basis']=='due_date'}"
+                  >
+                    Vencimento
+                  </option>
+                  <option
+                    value="realized_date"
+                    th:selected="${query['basis']=='realized_date'}"
+                  >
+                    Realização
+                  </option>
+                </select></label
+              ><label
+                >De<input
+                  type="date"
+                  name="from"
+                  th:value="${query['from']}" /></label
+              ><label
+                >Até<input
+                  type="date"
+                  name="to"
+                  th:value="${query['to']}" /></label
+              ><label
+                >Estado<select name="status">
+                  <option value="">Todos</option>
+                  <option
+                    th:each="state:${ {'PENDENTE','REALIZADO','CANCELADO'} }"
+                    th:value="${state}"
+                    th:selected="${query['status']==state}"
+                    th:text="${state}"
+                  ></option></select></label
+              ><label
+                >Tipo<select name="kind">
+                  <option value="">Todos</option>
+                  <option
+                    value="DESPESA"
+                    th:selected="${query['kind']=='DESPESA'}"
+                  >
+                    Despesa
+                  </option>
+                  <option
+                    value="RECEITA"
+                    th:selected="${query['kind']=='RECEITA'}"
+                  >
+                    Receita
+                  </option>
+                </select></label
+              ><label
+                >Conta<select name="account_id">
+                  <option value="">Todas</option>
+                  <option
+                    th:each="account:${accounts}"
+                    th:value="${account['id']}"
+                    th:text="${account['name']}"
+                    th:selected="${query['account_id']==account['id']}"
+                  ></option></select></label
+              ><label
+                >Categoria<select name="category_id">
+                  <option value="">Todas</option>
+                  <option
+                    th:each="category:${categories}"
+                    th:value="${category['id']}"
+                    th:text="${category['name']}"
+                    th:selected="${query['category_id']==category['id']}"
+                  ></option></select></label
+              ><button class="button secondary">Aplicar filtros</button
+              ><a href="/transactions" class="link">Limpar</a>
+            </form>
+            <div class="empty" th:if="${#lists.isEmpty(entries)}">
+              <span class="empty-icon">⇄</span>
+              <h3>Nenhum lançamento por aqui</h3>
+              <p>
+                Adicione uma receita ou despesa abaixo, ou ajuste os filtros.
+              </p>
+            </div>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(entries)}">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Descrição / categoria</th>
+                    <th>Conta</th>
+                    <th>Competência</th>
+                    <th>Vencimento / realização</th>
+                    <th>Valor</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr th:each="entry:${entries}">
+                    <td>
+                      <b th:text="${entry['description']}"></b
+                      ><small th:text="${entry['category_name']}"></small>
+                    </td>
+                    <td th:text="${entry['account_name']}"></td>
+                    <td th:text="${@fmt.date(entry['competence'])}"></td>
+                    <td>
+                      <span th:text="${@fmt.date(entry['due_date'])}"></span
+                      ><small
+                        th:text="${'Realizado: '+@fmt.date(entry['realized_date'])}"
+                      ></small>
+                    </td>
+                    <td>
+                      <strong
+                        th:classappend="${entry['kind']=='RECEITA'?'positive':'negative'}"
+                        th:text="${(entry['kind']=='RECEITA'?'+ ':'− ')+@fmt.money(entry['amount'])}"
+                      ></strong>
+                    </td>
+                    <td>
+                      <span
+                        class="badge"
+                        th:classappend="${entry['overdue']?'late':''}"
+                        th:text="${entry['overdue']?'VENCIDO':entry['status']}"
+                      ></span>
+                    </td>
+                    <td>
+                      <details th:if="${entry['status']!='CANCELADO'}">
+                        <summary>Gerenciar</summary>
+                        <div class="action-popover">
+                          <a
+                            class="link"
+                            th:href="@{/transactions(edit=${entry['id']})}"
+                            >Editar lançamento</a
+                          >
+                          <form
+                            th:if="${entry['status']=='PENDENTE'}"
+                            method="post"
+                            th:action="@{/transactions/{id}/realize(id=${entry['id']})}"
+                            class="stack"
+                          >
+                            <div
+                              th:replace="~{fragments/forms::actionFields(${entry})}"
+                            ></div>
+                            <label
+                              >Data de realização<input
+                                type="date"
+                                name="effective_date"
+                                required
+                                th:value="${today}"
+                                th:max="${today}" /></label
+                            ><button class="button primary">
+                              Marcar realizado
+                            </button>
+                          </form>
+                          <form
+                            th:if="${entry['status']=='REALIZADO'}"
+                            method="post"
+                            th:action="@{/transactions/{id}/undo(id=${entry['id']})}"
+                            data-confirm="Desfazer a realização e recalcular o saldo?"
+                          >
+                            <div
+                              th:replace="~{fragments/forms::actionFields(${entry})}"
+                            ></div>
+                            <button class="button secondary">
+                              Desfazer realização
+                            </button>
+                          </form>
+                          <form
+                            method="post"
+                            th:action="@{/transactions/{id}/cancel(id=${entry['id']})}"
+                            class="stack"
+                            data-confirm="Cancelar este lançamento e remover seu efeito no saldo?"
+                          >
+                            <div
+                              th:replace="~{fragments/forms::actionFields(${entry})}"
+                            ></div>
+                            <label
+                              >Motivo<input
+                                name="reason"
+                                required
+                                maxlength="300" /></label
+                            ><button class="button danger-button">
+                              Cancelar lançamento
+                            </button>
+                          </form>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination">
+              <a
+                th:if="${currentPage>1}"
+                class="button secondary page-link"
+                th:attr="data-page=${currentPage-1}"
+                href="/transactions"
+                >← Anterior</a
+              ><span th:text="${'Página '+currentPage}"></span
+              ><a
+                th:if="${hasNext}"
+                class="button secondary page-link"
+                th:attr="data-page=${currentPage+1}"
+                href="/transactions"
+                >Próxima →</a
+              >
+            </div>
+          </section>
+          <div class="two-columns">
+            <section class="panel" id="entry-form">
+              <div class="panel-heading">
+                <h2
+                  th:text="${edit['id']!=null?'Editar lançamento':'Novo lançamento'}"
+                ></h2>
+              </div>
+              <form method="post" th:action="@{/transactions}" class="stack">
+                <div th:replace="~{fragments/forms::identity}"></div>
+                <div class="form-grid">
+                  <div th:replace="~{fragments/forms::kind}"></div>
+                  <div th:replace="~{fragments/forms::amount}"></div>
+                </div>
+                <label
+                  >Descrição<input
+                    name="description"
+                    required
+                    maxlength="200"
+                    placeholder="Ex.: Mercado da semana"
+                    th:value="${edit['description']}"
+                /></label>
+                <div class="form-grid">
+                  <div
+                    th:replace="~{fragments/forms::accountSelect('account_id','Conta')}"
+                  ></div>
+                  <div th:replace="~{fragments/forms::categorySelect}"></div>
+                </div>
+                <div class="form-grid">
+                  <label
+                    >Competência<input
+                      type="date"
+                      name="competence"
+                      required
+                      th:value="${edit['competence']?:today}" /></label
+                  ><label
+                    >Vencimento<input
+                      type="date"
+                      name="due_date"
+                      required
+                      th:value="${edit['due_date']?:today}"
+                  /></label>
+                </div>
+                <div class="form-grid">
+                  <label
+                    >Estado<select name="status" data-status>
+                      <option value="PENDENTE">Pendente</option>
+                      <option
+                        value="REALIZADO"
+                        th:selected="${edit['status']=='REALIZADO'}"
+                      >
+                        Realizado
+                      </option>
+                    </select></label
+                  ><label data-realized
+                    >Data de realização<input
+                      type="date"
+                      name="realized_date"
+                      th:value="${edit['realized_date']?:today}"
+                      th:max="${today}"
+                  /></label>
+                </div>
+                <label th:if="${edit['status']=='REALIZADO'}" class="checkbox"
+                  ><input type="checkbox" name="confirm" value="yes" required />
+                  Confirmo a alteração e o recálculo do saldo.</label
+                ><button class="button primary">Salvar lançamento</button
+                ><a th:if="${edit['id']!=null}" href="/transactions"
+                  >Cancelar edição</a
+                >
+              </form>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Transferir entre contas</h2>
+                  <p>Sem alterar receitas ou despesas do mês.</p>
+                </div>
+              </div>
+              <form method="post" th:action="@{/transfers}" class="stack">
+                <input type="hidden" name="key" th:value="${@fmt.key()}" />
+                <div class="form-grid">
+                  <div
+                    th:replace="~{fragments/forms::accountSelect('source_id','Conta de origem')}"
+                  ></div>
+                  <div
+                    th:replace="~{fragments/forms::accountSelect('destination_id','Conta de destino')}"
+                  ></div>
+                </div>
+                <label
+                  >Valor (R$)<input
+                    name="amount"
+                    required
+                    inputmode="decimal"
+                    placeholder="0,00" /></label
+                ><label
+                  >Data efetiva<input
+                    type="date"
+                    name="effective_date"
+                    required
+                    th:value="${today}"
+                    th:max="${today}" /></label
+                ><button class="button secondary">
+                  Confirmar transferência
+                </button>
+              </form>
+              <details class="section-details">
+                <summary>Histórico de transferências</summary>
+                <article class="transfer-line" th:each="transfer:${transfers}">
+                  <b
+                    th:text="${transfer['source_name']+' → '+transfer['destination_name']}"
+                  ></b>
+                  <p
+                    th:text="${@fmt.money(transfer['amount'])+' · '+@fmt.date(transfer['effective_date'])+' · '+transfer['status']}"
+                  ></p>
+                  <form
+                    th:if="${transfer['status']=='REALIZADO'}"
+                    method="post"
+                    th:action="@{/transfers/{id}/cancel(id=${transfer['id']})}"
+                    data-confirm="Cancelar a transferência nas duas contas?"
+                    class="stack"
+                  >
+                    <div
+                      th:replace="~{fragments/forms::actionFields(${transfer})}"
+                    ></div>
+                    <label
+                      >Motivo<input
+                        name="reason"
+                        required
+                        maxlength="300" /></label
+                    ><button class="text-button">Cancelar transferência</button>
+                  </form>
+                </article>
+              </details>
+            </section>
+          </div>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='cards'}">
+          <div th:replace="~{fragments/cards::content}"></div>
+        </div>
+        <div th:remove="tag" th:if="${page=='budgets'}">
+          <form method="get" class="period-picker">
+            <label
+              >Mês<input
+                type="month"
+                name="month"
+                th:value="${month}"
+                required /></label
+            ><button class="button secondary">Ver orçamento</button>
+          </form>
+          <form method="post" th:action="@{/budgets/copy}" class="copy-budget">
+            <input type="hidden" name="key" th:value="${@fmt.key()}" /><input
+              type="hidden"
+              name="month"
+              th:value="${month}"
+            /><button class="button secondary">
+              ↻ Copiar limites do mês anterior</button
+            ><small>Somente categorias sem limite neste mês.</small>
+          </form>
+          <section class="budget-grid">
+            <article class="panel budget-card" th:each="category:${breakdown}">
+              <div class="panel-heading">
+                <h2 th:text="${category['name']}"></h2>
+                <span
+                  class="badge late"
+                  th:if="${category['limit']!=null and category['percent']>=80}"
+                  th:text="${category['percent']>=100?'Limite atingido':'Atenção: 80% ou mais'}"
+                ></span>
+              </div>
+              <strong
+                class="budget-consumed"
+                th:text="${@fmt.money(category['consumed'])}"
+              ></strong>
+              <p
+                class="muted"
+                th:text="${'Confirmado · '+@fmt.money(category['pending'])+' pendente'}"
+              ></p>
+              <progress
+                th:if="${category['limit']!=null}"
+                th:value="${category['consumed']+category['pending']}"
+                th:max="${category['limit']}"
+                th:attr="aria-label=${category['name']}"
+              ></progress>
+              <p
+                th:if="${category['limit']!=null}"
+                th:text="${'Disponível: '+@fmt.money(category['available'])+' de '+@fmt.money(category['limit'])}"
+              ></p>
+              <p th:if="${category['limit']==null}">Sem orçamento</p>
+              <a
+                class="link"
+                th:href="@{/reports(category_id=${category['id']},from=${month.atDay(1)},to=${month.atEndOfMonth()})}"
+                >Ver gastos confirmados →</a
+              ><a
+                class="link"
+                th:href="@{/transactions(category_id=${category['id']},status='PENDENTE',from=${month.atDay(1)},to=${month.atEndOfMonth()})}"
+                >Ver compromissos pendentes →</a
+              >
+              <form
+                th:if="${!category['archived']}"
+                method="post"
+                th:action="@{/budgets}"
+                class="budget-form"
+              >
+                <input
+                  type="hidden"
+                  name="key"
+                  th:value="${@fmt.key()}"
+                /><input
+                  type="hidden"
+                  name="version"
+                  th:value="${category['budget_version']}"
+                /><input type="hidden" name="month" th:value="${month}" /><input
+                  type="hidden"
+                  name="category_id"
+                  th:value="${category['id']}"
+                /><label
+                  >Limite mensal (R$)<input
+                    name="amount"
+                    inputmode="decimal"
+                    required
+                    th:value="${@fmt.decimal(category['limit'])}"
+                    placeholder="0,00" /></label
+                ><button class="button secondary">Salvar limite</button>
+              </form>
+            </article>
+          </section>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='recurrences'}">
+          <div class="two-columns">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Compromissos que se repetem</h2>
+              </div>
+              <p class="empty compact" th:if="${#lists.isEmpty(recurrences)}">
+                Cadastre aluguel, salário ou outras movimentações mensais.
+              </p>
+              <article class="transfer-line" th:each="rule:${recurrences}">
+                <b th:text="${rule['description']}"></b>
+                <p
+                  th:text="${@fmt.money(rule['amount'])+' · dia '+rule['anchor_day']+' · '+(rule['active']?'Ativa':'Encerrada')}"
+                ></p>
+                <div class="actions" th:if="${rule['active']}">
+                  <a class="link" th:href="@{/recurrences(edit=${rule['id']})}"
+                    >Editar futuras</a
+                  >
+                  <form
+                    method="post"
+                    th:action="@{/recurrences/{id}/stop(id=${rule['id']})}"
+                  >
+                    <div
+                      th:replace="~{fragments/forms::actionFields(${rule})}"
+                    ></div>
+                    <button class="text-button">Encerrar</button>
+                  </form>
+                </div>
+              </article>
+            </section>
+            <section class="panel">
+              <div class="panel-heading"><h2>Regra mensal</h2></div>
+              <p class="muted">
+                Gera lançamentos pendentes até o próximo mês. Alterar a regra
+                não altera lançamentos já gerados.
+              </p>
+              <form method="post" th:action="@{/recurrences}" class="stack">
+                <div th:replace="~{fragments/forms::identity}"></div>
+                <label
+                  >Descrição<input
+                    name="description"
+                    required
+                    maxlength="200"
+                    th:value="${edit['description']}"
+                /></label>
+                <div class="form-grid">
+                  <div th:replace="~{fragments/forms::kind}"></div>
+                  <div th:replace="~{fragments/forms::amount}"></div>
+                </div>
+                <div
+                  th:replace="~{fragments/forms::accountSelect('account_id','Conta')}"
+                ></div>
+                <div th:replace="~{fragments/forms::categorySelect}"></div>
+                <div class="form-grid">
+                  <label
+                    >Dia do mês<input
+                      type="number"
+                      name="anchor_day"
+                      min="1"
+                      max="31"
+                      required
+                      th:value="${edit['anchor_day']?:today.dayOfMonth}" /></label
+                  ><label
+                    >Início<input
+                      type="date"
+                      name="start_date"
+                      required
+                      th:value="${edit['start_date']?:today}" /></label
+                  ><label
+                    >Término (opcional)<input
+                      type="date"
+                      name="end_date"
+                      th:value="${edit['end_date']}"
+                  /></label>
+                </div>
+                <button class="button primary">Salvar recorrência</button>
+              </form>
+            </section>
+          </div>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='reports'}">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Os números por trás das escolhas</h2>
+                <p>
+                  Competência mede o resultado. Caixa mostra entradas e saídas
+                  efetivas.
+                </p>
+              </div>
+              <a class="button secondary export-filter" href="/exports/report"
+                >↓ Exportar relatório</a
+              >
+            </div>
+            <form method="get" class="filters">
+              <label
+                >Visão<select name="basis">
+                  <option value="competence">Resultado por competência</option>
+                  <option value="cash" th:selected="${query['basis']=='cash'}">
+                    Fluxo de caixa
+                  </option>
+                </select></label
+              ><label
+                >De<input
+                  type="date"
+                  name="from"
+                  required
+                  th:value="${from}" /></label
+              ><label
+                >Até<input
+                  type="date"
+                  name="to"
+                  required
+                  th:value="${to}" /></label
+              ><label
+                >Categoria (competência)<select name="category_id">
+                  <option value="">Todas</option>
+                  <option
+                    th:each="category:${categories}"
+                    th:value="${category['id']}"
+                    th:text="${category['name']}"
+                    th:selected="${query['category_id']==category['id']}"
+                  ></option></select></label
+              ><label
+                >Conta<select name="account_id">
+                  <option value="">Consolidado</option>
+                  <option
+                    th:each="account:${accounts}"
+                    th:value="${account['id']}"
+                    th:text="${account['name']}"
+                    th:selected="${query['account_id']==account['id']}"
+                  ></option></select></label
+              ><button class="button secondary">Gerar relatório</button>
+            </form>
+            <p class="notice">
+              No resultado, parcelas usam o primeiro dia da competência da
+              fatura. Filtrar uma conta exclui compras de cartão. No caixa
+              consolidado, transferências internas são eliminadas.
+            </p>
+            <div class="empty" th:if="${#lists.isEmpty(reportRows)}">
+              Sem dados no período selecionado.
+            </div>
+            <div class="table-wrap" th:if="${!#lists.isEmpty(reportRows)}">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Origem</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr th:each="row:${reportRows}">
+                    <td th:text="${@fmt.date(row['report_date'])}"></td>
+                    <td>
+                      <a
+                        th:href="${row['origin']=='CARTAO' or row['origin']=='FATURA'?'/cards':'/transactions'}"
+                        th:text="${row['description']}"
+                      ></a
+                      ><small th:text="${row['category_name']}"></small>
+                    </td>
+                    <td th:text="${row['origin']}"></td>
+                    <td th:text="${row['kind']}"></td>
+                    <td
+                      th:classappend="${row['kind']=='RECEITA'?'positive':'negative'}"
+                      th:text="${@fmt.money(row['amount'])}"
+                    ></td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th colspan="4">Entradas / receitas</th>
+                    <td th:text="${@fmt.money(reportTotals['income'])}"></td>
+                  </tr>
+                  <tr>
+                    <th colspan="4">Saídas / despesas</th>
+                    <td th:text="${@fmt.money(reportTotals['expense'])}"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div th:remove="tag" th:if="${page=='audit'}">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Transparência em cada mudança</h2>
+                <p>
+                  Últimos 100 eventos. A exportação completa inclui todo o
+                  histórico.
+                </p>
+              </div>
+              <a href="/me/export" class="link">Exportar tudo ↗</a>
+            </div>
+            <p class="empty" th:if="${#lists.isEmpty(history)}">
+              Suas alterações financeiras aparecerão aqui.
+            </p>
+            <details class="audit-row" th:each="event:${history}">
+              <summary>
+                <span th:text="${event['action']+' · '+event['entity']}"></span
+                ><small th:text="${event['created_at']}"></small>
+              </summary>
+              <dl>
+                <dt>Antes</dt>
+                <dd th:text="${event['before_value']}"></dd>
+                <dt>Depois</dt>
+                <dd th:text="${event['after_value']}"></dd>
+                <dt>Motivo</dt>
+                <dd th:text="${event['reason']}"></dd>
+                <dt>Autor</dt>
+                <dd th:text="${profile['name']}"></dd>
+              </dl>
+            </details>
+          </section>
+        </div>
+        <div th:remove="tag" th:if="${page=='settings'}">
+          <div class="two-columns">
+            <section class="panel">
+              <div class="panel-heading"><h2>Seu perfil</h2></div>
+              <form method="post" th:action="@{/me}" class="stack">
+                <label
+                  >Nome<input
+                    name="name"
+                    required
+                    maxlength="100"
+                    th:value="${profile['name']}" /></label
+                ><label
+                  >E-mail<input
+                    type="email"
+                    readonly
+                    th:value="${profile['email']}" /></label
+                ><label
+                  >Fuso horário<input
+                    name="timezone"
+                    required
+                    th:value="${profile['timezone']}"
+                  /><small>Ex.: America/Sao_Paulo</small></label
+                ><label
+                  >Moeda<input readonly value="Real brasileiro · BRL" /></label
+                ><button class="button primary">Salvar perfil</button>
+              </form>
+            </section>
+            <section class="panel">
+              <div class="panel-heading"><h2>Segurança e dados</h2></div>
+              <form method="post" th:action="@{/me/password}" class="stack">
+                <label
+                  >Senha atual<input
+                    type="password"
+                    name="current_password"
+                    autocomplete="current-password"
+                    required /></label
+                ><label
+                  >Nova senha<input
+                    type="password"
+                    name="password"
+                    minlength="12"
+                    maxlength="100"
+                    autocomplete="new-password"
+                    required /></label
+                ><button class="button secondary">
+                  Alterar senha e encerrar sessões
+                </button>
+              </form>
+              <hr />
+              <a class="button secondary" href="/me/export"
+                >↓ Exportar todos os meus dados</a
+              >
+              <p class="muted">
+                Arquivo ZIP privado com CSVs; valores monetários em centavos.
+              </p>
+              <details class="section-details">
+                <summary>Excluir minha conta</summary>
+                <p>
+                  Seu acesso será desativado imediatamente. Os dados ativos
+                  serão removidos na próxima rotina, em até 30 dias. Backups
+                  seguem a política de retenção.
+                </p>
+                <form
+                  method="post"
+                  th:action="@{/me/delete}"
+                  class="stack"
+                  data-confirm="Excluir sua conta e todos os dados financeiros? Esta ação não pode ser desfeita."
+                >
+                  <label
+                    >Digite EXCLUIR<input name="confirmation" required /></label
+                  ><label
+                    >Confirme sua senha<input
+                      type="password"
+                      name="password"
+                      required
+                      autocomplete="current-password" /></label
+                  ><button class="button danger-button">
+                    Excluir minha conta
+                  </button>
+                </form>
+              </details>
+            </section>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <span>finanças. <b>Clareza para seguir em frente.</b></span
+          ><span>Valores em BRL · Registros manuais</span>
+        </footer>
+      </main>
+    </div>
+    <nav class="mobile-nav" aria-label="Navegação no celular">
+      <a href="/dashboard" th:classappend="${page=='dashboard'?'active':''}"
+        ><span>◫</span>Início</a
+      ><a
+        href="/transactions"
+        th:classappend="${page=='transactions'?'active':''}"
+        ><span>⇄</span>Lançamentos</a
+      ><a href="/cards" th:classappend="${page=='cards'?'active':''}"
+        ><span>▱</span>Cartões</a
+      ><button data-menu aria-controls="mobile-more" aria-expanded="false">
+        <span>☰</span>Mais
+      </button>
+    </nav>
+    <nav class="mobile-more" id="mobile-more" hidden aria-label="Mais opções">
+      <a href="/accounts">Minhas contas</a><a href="/budgets">Orçamento</a
+      ><a href="/reports">Relatórios</a><a href="/recurrences">Recorrências</a
+      ><a href="/categories">Categorias</a><a href="/audit">Histórico</a
+      ><a href="/settings">Configurações</a>
+    </nav>
+    <div class="offline" role="alert" hidden>
+      Sem conexão. O formulário permanece nesta página. Tente salvar quando a
+      conexão voltar.
+    </div>
+  </body>
+</html>

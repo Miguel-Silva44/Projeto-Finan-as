@@ -1,0 +1,382 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <div th:remove="tag" th:fragment="content">
+      <div class="cards-grid">
+        <article class="credit-card" th:each="card:${cards}">
+          <div>
+            <span class="eyebrow">CARTÃO DE CRÉDITO</span><span>▱</span>
+          </div>
+          <h2 th:text="${card['name']}"></h2>
+          <p
+            th:text="${'Limite informado: '+@fmt.money(card['credit_limit'])}"
+          ></p>
+          <small th:text="${'Parcelas ainda não pagas: '+@fmt.money(card['outstanding'])}"></small>
+          <p th:if="${card['outstanding']>card['credit_limit']}">Atenção: compromissos acima do limite informado.</p>
+          <small
+            th:text="${'Fecha dia '+card['closing_day']+' · vence dia '+card['due_day']+' do mês seguinte'}"
+          ></small>
+          <div class="actions">
+            <a th:href="@{/cards(edit=${card['id']})}" class="link"
+              >Editar cartão</a
+            >
+            <form
+              th:if="${!card['archived']}"
+              method="post"
+              th:action="@{/card/{id}/archive(id=${card['id']})}"
+            >
+              <div th:replace="~{fragments/forms::actionFields(${card})}"></div>
+              <button class="text-button">Arquivar</button>
+            </form>
+            <span th:if="${card['archived']}">Arquivado</span>
+          </div>
+        </article>
+        <a class="add-card" href="#card-form"
+          ><span>＋</span>Adicionar cartão</a
+        >
+      </div>
+      <p class="notice" th:if="${limitWarning==true}">Atenção: esta compra ultrapassa o limite informado do cartão. Confira os valores antes de confirmar; você pode continuar.</p>
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Faturas</h2>
+            <p>
+              O pagamento registra uma saída na conta, sem contar a despesa duas
+              vezes.
+            </p>
+          </div>
+        </div>
+        <div class="empty" th:if="${#lists.isEmpty(invoices)}">
+          <span class="empty-icon">▱</span>
+          <h3>Seus cartões, em dia</h3>
+          <p>As faturas aparecem quando você registra sua primeira compra.</p>
+        </div>
+        <div class="invoice-grid">
+          <article class="invoice" th:each="invoice:${invoices}">
+            <div class="panel-heading">
+              <div>
+                <b th:text="${invoice['card_name']}"></b
+                ><small th:text="${'Competência '+invoice['month']}"></small>
+              </div>
+              <span
+                class="badge"
+                th:classappend="${invoice['overdue']?'late':''}"
+                th:text="${invoice['overdue']?'VENCIDA · '+invoice['status']:invoice['status']}"
+              ></span>
+            </div>
+            <strong
+              class="invoice-total"
+              th:text="${@fmt.money(invoice['total'])}"
+            ></strong>
+            <p
+              th:text="${'Fechamento: '+@fmt.date(invoice['closing_date'])}"
+            ></p>
+            <p th:text="${'Vencimento: '+@fmt.date(invoice['due_date'])}"></p>
+            <a class="link" th:href="@{/cards(invoice=${invoice['id']})}"
+              >Ver parcelas →</a
+            >
+            <details>
+              <summary>Gerenciar fatura</summary>
+              <div class="stack">
+                <form
+                  th:if="${invoice['status']=='ABERTA'}"
+                  method="post"
+                  th:action="@{/invoices/{id}/close(id=${invoice['id']})}"
+                >
+                  <div
+                    th:replace="~{fragments/forms::actionFields(${invoice})}"
+                  ></div>
+                  <button class="button secondary">Fechar fatura</button>
+                </form>
+                <form
+                  th:if="${invoice['status']=='FECHADA'}"
+                  method="post"
+                  th:action="@{/invoices/{id}/pay(id=${invoice['id']})}"
+                  class="stack"
+                  data-confirm="Confirmar o pagamento integral manual e descontar da conta?"
+                >
+                  <div
+                    th:replace="~{fragments/forms::actionFields(${invoice})}"
+                  ></div>
+                  <div
+                    th:replace="~{fragments/forms::accountSelect('account_id','Pagar pela conta')}"
+                  ></div>
+                  <label
+                    >Data de pagamento<input
+                      type="date"
+                      name="effective_date"
+                      required
+                      th:value="${today}"
+                      th:max="${today}" /></label
+                  ><button class="button primary">
+                    Registrar pagamento integral
+                  </button>
+                </form>
+                <form
+                  th:if="${invoice['status']=='FECHADA' or (invoice['status']=='PAGA' and invoice['total']==0)}"
+                  method="post"
+                  th:action="@{/invoices/{id}/reopen(id=${invoice['id']})}"
+                >
+                  <div
+                    th:replace="~{fragments/forms::actionFields(${invoice})}"
+                  ></div>
+                  <button class="text-button">Reabrir para correção</button>
+                </form>
+                <form
+                  th:if="${invoice['status']=='PAGA' and invoice['total']>0}"
+                  method="post"
+                  th:action="@{/invoices/{id}/undo(id=${invoice['id']})}"
+                  class="stack"
+                  data-confirm="Desfazer pagamento e restaurar o saldo da conta?"
+                >
+                  <div
+                    th:replace="~{fragments/forms::actionFields(${invoice})}"
+                  ></div>
+                  <label
+                    >Motivo da correção<input
+                      name="reason"
+                      required
+                      maxlength="300" /></label
+                  ><button class="button danger-button">
+                    Desfazer pagamento
+                  </button>
+                </form>
+                <small th:if="${invoice['manual_reopen']}"
+                  >Em correção. Feche manualmente ao terminar.</small
+                >
+              </div>
+            </details>
+          </article>
+        </div>
+        <div class="table-wrap" th:if="${invoiceParts!=null}">
+          <h3>Parcelas da fatura selecionada</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Compra</th>
+                <th>Parcela</th>
+                <th>Valor</th>
+                <th>Estado da compra</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="part:${invoiceParts}">
+                <td th:text="${part['description']}"></td>
+                <td th:text="${part['number']+' / '+part['installments']}"></td>
+                <td th:text="${@fmt.money(part['amount'])}"></td>
+                <td th:text="${part['status']}"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <div class="two-columns">
+        <section class="panel" id="purchase-form">
+          <div class="panel-heading"><h2>Registrar compra</h2></div>
+          <div th:remove="tag" th:if="${#lists.isEmpty(preview)}">
+            <form
+              method="post"
+              th:action="@{/purchases/preview}"
+              class="stack"
+              th:with="edit=${editType=='purchase'?edit:emptyMap}"
+            >
+              <div th:replace="~{fragments/forms::identity}"></div>
+              <label
+                >Cartão<select name="card_id" required>
+                  <option value="">Selecione</option>
+                  <option
+                    th:each="card:${cards}"
+                    th:if="${!card['archived']}"
+                    th:value="${card['id']}"
+                    th:text="${card['name']}"
+                    th:selected="${edit['card_id']==card['id']}"
+                  ></option></select></label
+              ><label
+                >Descrição<input
+                  name="description"
+                  required
+                  maxlength="200"
+                  placeholder="Ex.: Compra para casa"
+                  th:value="${edit['description']}" /></label
+              ><input type="hidden" name="kind" value="DESPESA" />
+              <div th:replace="~{fragments/forms::categorySelect}"></div>
+              <div class="form-grid">
+                <div th:replace="~{fragments/forms::amount}"></div>
+                <label
+                  >Parcelas<input
+                    type="number"
+                    name="installments"
+                    min="1"
+                    max="120"
+                    required
+                    th:value="${edit['installments']?:1}"
+                /></label>
+              </div>
+              <label
+                >Data da compra<input
+                  type="date"
+                  name="purchase_date"
+                  required
+                  th:value="${edit['purchase_date']?:today}"
+                  th:max="${today}" /></label
+              ><button class="button primary">Conferir parcelas →</button>
+            </form>
+          </div>
+          <div th:remove="tag" th:if="${!#lists.isEmpty(preview)}">
+            <p class="notice">
+              Confira a distribuição antes de confirmar. A compra só será
+              gravada após a confirmação.
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Parcela</th>
+                    <th>Competência</th>
+                    <th>Vencimento</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr th:each="part:${preview}">
+                    <td th:text="${part.number}"></td>
+                    <td th:text="${part.month}"></td>
+                    <td th:text="${@fmt.date(part.due)}"></td>
+                    <td th:text="${@fmt.money(part.amount)}"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <form method="post" th:action="@{/purchases}" class="stack">
+              <input
+                th:each="field:${purchaseForm}"
+                th:if="${field.key!='_csrf'}"
+                type="hidden"
+                th:name="${field.key}"
+                th:value="${field.value}"
+              /><button class="button primary">
+                Confirmar compra e parcelas</button
+              ><a class="link" href="/cards#purchase-form">Voltar e ajustar</a>
+            </form>
+          </div>
+        </section>
+        <section class="panel" id="card-form">
+          <div class="panel-heading"><h2>Configurar cartão</h2></div>
+          <form
+            method="post"
+            th:action="@{/cards}"
+            class="stack"
+            th:with="edit=${editType=='card'?edit:emptyMap}"
+          >
+            <div th:replace="~{fragments/forms::identity}"></div>
+            <label
+              >Nome do cartão<input
+                name="name"
+                maxlength="100"
+                required
+                th:value="${edit['name']}"
+                placeholder="Ex.: Cartão principal" /></label
+            ><label
+              >Limite informado (R$)<input
+                name="credit_limit"
+                inputmode="decimal"
+                required
+                th:value="${@fmt.decimal(edit['credit_limit'])}"
+            /></label>
+            <div class="form-grid">
+              <label
+                >Dia de fechamento<input
+                  type="number"
+                  name="closing_day"
+                  min="1"
+                  max="31"
+                  required
+                  th:value="${edit['closing_day']?:20}" /></label
+              ><label
+                >Vencimento no mês seguinte<input
+                  type="number"
+                  name="due_day"
+                  min="1"
+                  max="31"
+                  required
+                  th:value="${edit['due_day']?:10}"
+              /></label>
+            </div>
+            <p class="muted">
+              Compras no dia de fechamento entram na fatura seguinte. Limite
+              informativo, sem conexão com o banco.
+            </p>
+            <button class="button secondary">Salvar cartão</button>
+          </form>
+        </section>
+      </div>
+      <section class="panel">
+        <div class="panel-heading"><h2>Compras registradas</h2></div>
+        <div class="empty compact" th:if="${#lists.isEmpty(purchases)}">
+          Nenhuma compra registrada.
+        </div>
+        <div class="table-wrap" th:if="${!#lists.isEmpty(purchases)}">
+          <table>
+            <thead>
+              <tr>
+                <th>Compra</th>
+                <th>Cartão</th>
+                <th>Data</th>
+                <th>Total</th>
+                <th>Parcelas</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="purchase:${purchases}">
+                <td>
+                  <b th:text="${purchase['description']}"></b
+                  ><small
+                    th:text="${purchase['category_name']+' · '+purchase['status']}"
+                  ></small>
+                </td>
+                <td th:text="${purchase['card_name']}"></td>
+                <td th:text="${@fmt.date(purchase['purchase_date'])}"></td>
+                <td th:text="${@fmt.money(purchase['amount'])}"></td>
+                <td th:text="${purchase['installments']}"></td>
+                <td>
+                  <details th:if="${purchase['status']=='ATIVA'}">
+                    <summary>Corrigir</summary>
+                    <div class="action-popover">
+                      <a
+                        class="link"
+                        th:href="@{/cards(type='purchase',edit=${purchase['id']})}"
+                        >Editar compra</a
+                      >
+                      <p class="muted">
+                        Todas as faturas da compra precisam estar abertas.
+                      </p>
+                      <form
+                        method="post"
+                        th:action="@{/purchases/{id}/cancel(id=${purchase['id']})}"
+                        class="stack"
+                        data-confirm="Cancelar esta compra e retirar as parcelas das faturas abertas?"
+                      >
+                        <div
+                          th:replace="~{fragments/forms::actionFields(${purchase})}"
+                        ></div>
+                        <label
+                          >Motivo<input
+                            name="reason"
+                            maxlength="300"
+                            required /></label
+                        ><button class="button danger-button">
+                          Cancelar compra
+                        </button>
+                      </form>
+                    </div>
+                  </details>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
