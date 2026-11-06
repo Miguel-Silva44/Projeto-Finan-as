@@ -5,6 +5,7 @@ const { chromium, webkit } = require(
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const base = process.env.BASE_URL || "http://localhost:8080";
 const today = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Sao_Paulo",
@@ -44,10 +45,17 @@ async function run(engine, name, width, height, mobile) {
     await page.getByLabel("E-mail", { exact: true }).fill(email);
     await page.locator("input[name=password]").fill(password);
     await submit(page, page.locator("form"), "Criar minha conta →");
-    const mails = await fs.readdir("data/mail");
+    const mailContainer = process.env.MAIL_CONTAINER;
+    const dockerCommand = process.env.DOCKER_COMMAND || "docker";
+    const mailDirectory = process.env.MAIL_DIRECTORY || "data/mail";
+    const mails = mailContainer
+      ? execFileSync(dockerCommand,["exec",mailContainer,"find","/app/data/mail","-type","f"],{encoding:"utf8"}).trim().split(/\r?\n/).filter(Boolean)
+      : await fs.readdir(mailDirectory);
     let token;
     for (const file of mails) {
-      const text = await fs.readFile(path.join("data/mail", file), "utf8");
+      const text = mailContainer
+        ? execFileSync(dockerCommand,["exec",mailContainer,"cat",file],{encoding:"utf8"})
+        : await fs.readFile(path.join(mailDirectory, file), "utf8");
       if (text.includes(email) && text.includes("/auth/verify?token=")) {
         token = text.match(/token=([^\s]+)/)[1];
         break;

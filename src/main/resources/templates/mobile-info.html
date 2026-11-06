@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informações · Controle Financeiro</title><link rel="stylesheet" href="/css/app.css"></head>
+<body class="auth-body"><main class="error-card">
+<section th:if="${document=='/privacy'}"><h1>Privacidade</h1>
+<p>O Controle Financeiro armazena nome, e-mail e os registros financeiros informados pelo titular para oferecer o controle de contas, lançamentos e relatórios.</p>
+<p>A autenticação usa cookie de sessão. O aplicativo Android apresenta o serviço web pelo navegador do aparelho. O uso depende de conexão; dados financeiros não são armazenados pelo cache offline da PWA.</p>
+<p>Você pode exportar seus dados e excluir sua conta nas configurações. Arquivos exportados para seu aparelho permanecem sob seu controle. Cópias de recuperação seguem a política do operador do serviço.</p>
+<p>Esta implantação ainda não está liberada para produção. Identidade e contato do responsável, hospedagem, prazos de retenção e política definitiva precisam ser publicados antes da distribuição pública.</p></section>
+<section th:if="${document=='/support'}"><h1>Suporte</h1>
+<p>Na instalação local, procure o responsável que forneceu o aplicativo. Nunca envie senhas, links de recuperação ou extratos para canais desconhecidos.</p>
+<p>Um contato público de suporte será definido antes da distribuição de produção.</p></section>
+<section th:if="${document=='/account-deletion'}"><h1>Excluir sua conta</h1>
+<p>Você pode iniciar o processo pelo navegador, sem instalar o aplicativo. Entre na sua conta, abra Configurações e confirme a exclusão com sua senha. Exporte seus dados antes de confirmar.</p>
+<a href="/settings">Entrar e abrir configurações</a>
+<p>Se perdeu o acesso, use a recuperação de senha na tela de login. Nenhum dado é excluído apenas ao visitar esta página.</p>
+<p>Arquivos já baixados para seu aparelho não são removidos remotamente. Cópias de recuperação expiram conforme a política operacional do serviço.</p></section>
+<p><a href="/privacy">Privacidade</a> · <a href="/support">Suporte</a> · <a href="/account-deletion">Exclusão</a></p>
+<a href="/auth/login">Acessar o Controle Financeiro</a>
+</main></body></html>

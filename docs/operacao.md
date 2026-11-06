@@ -1,6 +1,8 @@
 # Operação local e preparação para produção
 
-## Backup
+Para PostgreSQL em Docker, siga o [guia de instalação, execução, IntelliJ, backup e restauração](postgresql-docker.md). Os procedimentos H2 abaixo se aplicam ao modo local sem o perfil `postgres`.
+
+## Backup H2
 
 Defina `BACKUP_PASSWORD` com pelo menos 16 caracteres. O serviço gera diariamente, às 03h UTC, um snapshot consistente H2 criptografado em `data/backups/*.fin`. O formato usa AES-256-GCM autenticado, salt aleatório e chave derivada com PBKDF2-HMAC-SHA256, 600 mil iterações. O snapshot SQL temporário é removido após criptografar. Restrinja acesso ao diretório `data`, inclusive aos temporários.
 

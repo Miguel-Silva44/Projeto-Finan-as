@@ -1,0 +1,110 @@
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:18.6-bookworm@sha256:f1ea2a1a4fb7b68d4836be1fdcb8a6466a89b072158bf9d97663600538c294c5}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: financas_admin
+      POSTGRES_DB: ${POSTGRES_DB:-financas}
+      POSTGRES_PASSWORD_FILE: /run/secrets/admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - admin_password
+      - migration_password
+      - app_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./docker/postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U financas_admin -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    networks: [database]
+  app:
+    image: controle-financeiro:${FINANCE_ENV:?Generate the environment file first}
+    build:
+      context: .
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.12-eclipse-temurin-21@sha256:c3c9d3ac4ce8431a3995c0318b8d390f448e693dd4fabc16e9b68d2e1f3d7b46}
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:21-jre-noble@sha256:0eda5830ed7b669abc246a8dc520ea8a23cab06f9a8d4b6964109e2f2394e46f}
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?Set Spring profiles}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-financas}
+      SPRING_DATASOURCE_USERNAME: financas_app
+      SPRING_FLYWAY_USER: financas_migrator
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+      BASE_URL: ${BASE_URL:?Set BASE_URL}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      MAIL_MODE: ${MAIL_MODE:-file}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_TLS: ${SMTP_TLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-acesso@financas.local}
+      APP_BACKUP_ENABLED: "false"
+      APP_ANDROID_PACKAGE: ${ANDROID_PACKAGE:-}
+      APP_ANDROID_FINGERPRINTS: ${ANDROID_FINGERPRINTS:-}
+    secrets:
+      - source: app_password
+        target: spring.datasource.password
+      - source: migration_password
+        target: spring.flyway.password
+      - source: smtp_password
+        target: spring.mail.password
+      - source: smtp_user
+        target: spring.mail.username
+    ports: ['127.0.0.1:${APP_PORT:-8080}:8080']
+    volumes: [dev_mail:/app/data/mail]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, java, -Dloader.main=br.com.financa.tools.HealthProbe, -cp, /app/app.jar, org.springframework.boot.loader.launch.PropertiesLauncher]
+      interval: 10s
+      timeout: 8s
+      retries: 18
+      start_period: 40s
+    networks: [database, frontend]
+  backup:
+    profiles: [backup]
+    build:
+      context: .
+      dockerfile: docker/backup/Dockerfile
+      args:
+        POSTGRES_IMAGE: ${POSTGRES_IMAGE:-postgres:18.6-bookworm@sha256:f1ea2a1a4fb7b68d4836be1fdcb8a6466a89b072158bf9d97663600538c294c5}
+    restart: unless-stopped
+    depends_on:
+      app: {condition: service_healthy}
+    environment:
+      PGHOST: db
+      PGUSER: financas_admin
+      PGDATABASE: ${POSTGRES_DB:-financas}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-90}
+    secrets: [admin_password, backup_password]
+    volumes: ['${BACKUP_DIRECTORY:?Set BACKUP_DIRECTORY}:/backups']
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'test -f /backups/last-success && test $$(( $$(date +%s) - $$(cat /backups/last-success) )) -lt $$(( $${BACKUP_INTERVAL_SECONDS} + 3600 ))']
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+secrets:
+  admin_password: {file: './data/secrets/${FINANCE_ENV}/admin_password'}
+  migration_password: {file: './data/secrets/${FINANCE_ENV}/migration_password'}
+  app_password: {file: './data/secrets/${FINANCE_ENV}/app_password'}
+  backup_password: {file: './data/secrets/${FINANCE_ENV}/backup_password'}
+  smtp_user: {file: './data/secrets/${FINANCE_ENV}/smtp_user'}
+  smtp_password: {file: './data/secrets/${FINANCE_ENV}/smtp_password'}
+volumes:
+  postgres_data:
+  dev_mail:
+networks:
+  database: {internal: true}
+  frontend:

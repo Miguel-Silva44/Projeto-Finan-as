@@ -1,0 +1,88 @@
+plugins { id 'com.android.application' }
+
+def environment = providers.gradleProperty('financeEnvironment').getOrElse('hml')
+if (!(environment in ['hml', 'prod'])) throw new GradleException('Environment must be hml or prod')
+def config = new Properties()
+def localConfig = rootProject.file("config/${environment}.local.properties")
+def configFile = localConfig.exists() ? localConfig : rootProject.file("config/${environment}.example.properties")
+configFile.withInputStream { config.load(new InputStreamReader(it, 'UTF-8')) }
+def origin = config.getProperty('origin', '').trim()
+if (origin) {
+    def uri = new URI(origin)
+    if (uri.scheme != 'https' || !uri.host || uri.userInfo || uri.query || uri.fragment ||
+        !(uri.path in ['', '/']) || uri.host == 'localhost' || uri.host.endsWith('.invalid') ||
+        uri.host.endsWith('.local') || uri.host ==~ /[0-9.]+/)
+        throw new GradleException('Origin must be a public HTTPS origin, without path or credentials')
+    origin = origin.replaceAll('/$', '')
+}
+def packageName = config.getProperty('applicationId', '')
+if (!(packageName ==~ /[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+/))
+    throw new GradleException('Invalid applicationId')
+if (environment == 'hml' && !packageName.endsWith('.hml'))
+    throw new GradleException('Homologation applicationId must end with .hml')
+if (environment == 'prod' && packageName.endsWith('.hml'))
+    throw new GradleException('Production must have a distinct applicationId')
+def launchUrl = origin ? "${origin}/dashboard" : 'https://unconfigured.invalid/dashboard'
+def signing = new Properties()
+def signingFile = rootProject.file('signing.properties')
+if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
+def storePassword = System.getenv('ANDROID_STORE_PASSWORD')
+def keyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+def signingReady = signing.getProperty('storeFile') && signing.getProperty('keyAlias') && storePassword && keyPassword
+
+android {
+    namespace 'br.com.financa.android'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+    defaultConfig {
+        applicationId packageName
+        minSdk 26
+        targetSdk 36
+        versionCode config.getProperty('versionCode', '1').toInteger()
+        versionName config.getProperty('versionName', '0.1.0')
+        buildConfigField 'boolean', 'CONFIGURED', origin ? 'true' : 'false'
+        resValue 'string', 'app_name', config.getProperty('appName', 'Controle Financeiro')
+        resValue 'string', 'launch_url', launchUrl
+        resValue 'string', 'asset_statements', groovy.json.JsonOutput.toJson([
+            [relation: ['delegate_permission/common.handle_all_urls'], target: [namespace: 'web', site: origin ?: 'https://unconfigured.invalid']]
+        ]).replace('"', '\\"')
+    }
+    signingConfigs {
+        if (signingReady) {
+            release {
+                storeFile rootProject.file(signing.getProperty('storeFile'))
+                storePassword storePassword
+                keyAlias signing.getProperty('keyAlias')
+                keyPassword keyPassword
+            }
+        }
+    }
+    buildTypes {
+        debug { versionNameSuffix '-debug' }
+        release {
+            minifyEnabled false
+            if (signingReady) signingConfig signingConfigs.release
+        }
+    }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError true; checkReleaseBuilds true }
+}
+
+def validateRelease = tasks.register('validateFinanceRelease') {
+    doLast {
+        if (!origin || config.getProperty('identityConfirmed') != 'true')
+            throw new GradleException('Release requires HTTPS origin and identityConfirmed=true in local configuration')
+        if (!signingReady || !rootProject.file(signing.getProperty('storeFile')).isFile())
+            throw new GradleException('Release requires existing keystore, alias and password environment variables')
+    }
+}
+tasks.configureEach {
+    if (name == 'preReleaseBuild') dependsOn validateRelease
+}
+dependencyLocking { lockAllConfigurations() }
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
+    // Use the stable Browser release instead of the helper's transitive alpha.
+    implementation 'androidx.browser:browser:1.9.0'
+}

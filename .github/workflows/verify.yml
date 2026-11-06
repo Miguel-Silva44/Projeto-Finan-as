@@ -1,0 +1,29 @@
+name: Verify Java and PostgreSQL
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify including mandatory PostgreSQL containers
+        run: mvn -B -Ppostgres-it verify spotless:check
+      - name: Validate Compose
+        shell: pwsh
+        run: |
+          ./scripts/new-environment.ps1 -Environment dev
+          docker compose -p financas-dev --env-file .env.dev -f compose.yaml -f compose.dev.yaml config --quiet
+      - name: Keep test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports
+            target/failsafe-reports

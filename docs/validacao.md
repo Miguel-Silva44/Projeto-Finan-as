@@ -39,9 +39,11 @@ Esse ensaio mede o serviço de agregação com H2 em memória, sem rede, renderi
 
 ## Limites e pendências externas
 
+Em 06/11/2026, a integração Neon também foi validada: `npm run build` aprovado (34 testes executados e 1 opcional ignorado), Flyway v7 na branch de teste e em `production`, TLS e permissões runtime aprovados por `npm run neon:verify`, e jornadas financeiras Chromium desktop/celular aprovadas na branch isolada. Procedimentos e limites em [neon.md](neon.md). O servidor Java ainda roda localmente; Neon hospeda o banco.
+
 - Entrega SMTP real não foi acionada. E-mails locais são arquivos `.eml` privados em `data/mail`; produção exige configuração e confirmação de recebimento.
 - Hospedagem, HTTPS, armazenamento independente de backups, retenção e restauração em até 8 horas dependem da operação.
-- PostgreSQL tem driver e desenho de migração, mas não foi executado neste ambiente.
+- PostgreSQL 18.6 em Docker foi executado e validado em 06/11/2026: 19 testes de integração aprovados, recriação de containers com dados preservados e backup criptografado restaurado em banco separado. Evidências locais: `target/postgres-verification.log` e `target/postgres-backup-validation.txt`; procedimentos reproduzíveis no [guia PostgreSQL](postgresql-docker.md).
 - Safari/iOS, Chrome/Android em aparelhos reais, Edge/Firefox e leitor de tela exigem homologação específica.
 - Relatórios, histórico e exportação completa ainda podem ser volumosos; a lista de lançamentos é paginada, o histórico em tela limita a 100 registros e o restante permanece disponível na exportação.
 - Não há integração bancária, execução de pagamentos nem processamento de cartão pelo app.

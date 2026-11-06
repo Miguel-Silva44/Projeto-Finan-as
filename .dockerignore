@@ -1,0 +1,11 @@
+.git
+.idea
+target
+data
+.env
+.env.*
+*.log
+node_modules
+android
+artifacts
+test-results

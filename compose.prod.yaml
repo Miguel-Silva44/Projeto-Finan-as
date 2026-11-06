@@ -1,0 +1,10 @@
+# App port stays on loopback; terminate HTTPS in the host's trusted reverse proxy.
+services:
+  app:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod,postgres
+      COOKIE_SECURE: "true"
+      MAIL_MODE: smtp
+      SPRING_THYMELEAF_CACHE: "true"
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+      SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: ${TRUSTED_PROXY_PATTERN:-127\.0\.0\.1|10\.[0-9.]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9.]+}

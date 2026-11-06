@@ -1,10 +1,27 @@
 # Controle Financeiro
 
-Próximas entregas especificadas: [PostgreSQL e Docker com persistência](specs/spec-postgresql-docker-persistencia.md) e [análise/distribuição Android APK](specs/spec-android-apk.md).
+Implementado: [PostgreSQL e Docker com persistência](specs/spec-postgresql-docker-persistencia.md). A preparação PWA e o projeto Android TWA estão em [Android: geração e instalação](docs/android.md); compilação APK exige SDK/licenças e o uso conectado exige domínio HTTPS.
 
-Webapp em **Java 21, Spring Boot 4.1.0, Spring MVC, Thymeleaf, Spring Security e Spring JDBC**, com interface responsiva. Banco H2 persistente para uso local, migrações Flyway e driver PostgreSQL disponível para implantação.
+PostgreSQL/Docker: [guia de preparação, execução, backup e migração](docs/postgresql-docker.md). O roteiro verifica o PC, instala componentes ausentes pelo terminal e usa PostgreSQL em container com volume persistente. O APK de teste e a preparação para HTTPS estão no [guia Android](docs/android.md).
 
-## Executar
+Neon: [configuração do PostgreSQL gerenciado e execução Java](docs/neon.md). `npm run build` executa a verificação Maven; `npm run start:neon` inicia o app conectado ao Neon.
+
+Webapp em **Java 21, Spring Boot 4.1.0, Spring MVC, Thymeleaf, Spring Security e Spring JDBC**, com interface responsiva. PostgreSQL 18.6 em Docker com volume persistente, migrações Flyway e backup criptografado. O modo H2 local continua disponível.
+
+## Executar com Docker e PostgreSQL
+
+No PowerShell, na pasta do projeto:
+
+```powershell
+.\scripts\check-environment.ps1
+.\scripts\setup-dev-environment.ps1 -Install -StartDocker -PullImages
+.\scripts\new-environment.ps1 -Environment dev
+.\scripts\start-environment.ps1 -Environment dev -WithBackup
+```
+
+O instalador pode solicitar elevação e aceite dos termos; WSL pode exigir reinicialização. Gere o ambiente somente uma vez: o script protege arquivos de configuração e segredos existentes. Abra **http://localhost:8080** e use o login dev abaixo. Para parar preservando os dados: `.\scripts\stop-environment.ps1 -Environment dev`. Consulte o [guia completo](docs/postgresql-docker.md), inclusive para IntelliJ, backup, restauração e importação do H2.
+
+## Executar no modo H2 local
 
 Pré-requisitos: JDK 21 e Maven 3.9+. No PowerShell:
 

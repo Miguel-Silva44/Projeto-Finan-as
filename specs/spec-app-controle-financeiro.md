@@ -249,7 +249,7 @@ migrations/
 tests/
 ```
 
-Stack definida por instrução do usuário: Java 21, Spring Boot 4.1.0, Spring MVC, Thymeleaf, Spring Security, Spring JDBC e Flyway. H2 persistente é o banco de execução local; o driver PostgreSQL está disponível para uma implantação a homologar. CSS próprio implementa a interface responsiva. Identidade é gerenciada pelo Spring Security; hospedagem permanece em aberto. Decisão e limites em [decisao-arquitetura.md](../docs/decisao-arquitetura.md), execução no [README](../README.md). Esta implementação não herda a stack Java/Wicket do AlocPro.
+Stack definida por instrução do usuário: Java 21, Spring Boot 4.1.0, Spring MVC, Thymeleaf, Spring Security, Spring JDBC e Flyway. PostgreSQL 18.6 em Docker com volume persistente foi implementado e validado localmente; o modo H2 continua disponível. CSS próprio implementa a interface responsiva. Identidade é gerenciada pelo Spring Security; hospedagem permanece em aberto. Decisão e limites em [decisao-arquitetura.md](../docs/decisao-arquitetura.md), execução no [README](../README.md). Esta implementação não herda a stack Java/Wicket do AlocPro.
 
 ### 9.2 Princípios de Clean Code
 
@@ -372,7 +372,7 @@ I1 e I2 já permitem experimentar um núcleo utilizável; o MVP desta spec só e
 | Pessoal, familiar ou empresarial? | Pessoal, um titular por espaço | Compartilhamento exige membros, permissões e autoria própria |
 | Plataforma e arquitetura | Confirmadas: webapp MVC com Clean Code e interface responsiva para celular | PWA opcional e aplicativo nativo exigem evolução própria |
 | Nome e identidade visual | Nome provisório “Controle Financeiro” | Definir antes do refinamento visual |
-| Stack e hospedagem | Java 21 e Spring definidos; execução local H2 implementada | Hospedagem, PostgreSQL e serviços de produção precisam de homologação |
+| Stack e hospedagem | Java 21 e Spring; execução local H2 e PostgreSQL/Docker implementadas | Hospedagem e serviços de produção precisam de homologação |
 | Lançamentos manuais ou sincronizados? | Manuais | Integração bancária precisa spec de consentimento, conciliação e deduplicação |
 | Recursos de crédito avançados? | Pagamento integral e parcelas sem juros calculados | Rotativo, estorno comercial e parcial exigem modelo adicional |
 | Retenção e exclusão | Prazos operacionais propostos na seção 10 | Formalizar política antes da produção |
@@ -387,7 +387,7 @@ MVP pronto significa: requisitos funcionais entregues, cenários obrigatórios a
 
 ## 16. Histórico
 
-Evoluções complementares, ainda não implementadas: [PostgreSQL/Docker](spec-postgresql-docker-persistencia.md) e [Android/APK](spec-android-apk.md). Elas propõem PostgreSQL persistente e preparação PWA/TWA; o escopo de execução atual continua descrito nesta spec até a implementação dessas entregas.
+Entrega complementar implementada e validada localmente: [PostgreSQL/Docker](spec-postgresql-docker-persistencia.md). A preparação PWA e o projeto [Android/APK](spec-android-apk.md) estão implementados; compilar e homologar o APK depende de SDK/licenças, servidor HTTPS e aparelho. As evidências e pendências operacionais estão nas specs correspondentes.
 
 | Versão | Data | Alteração |
 |---|---|---|

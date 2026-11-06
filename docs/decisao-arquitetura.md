@@ -22,7 +22,7 @@ Transferências são um único registro com dois efeitos derivados. Pagamento de
 
 ## Limites operacionais
 
-H2 em arquivo e sessões em memória pressupõem uma instância. Reiniciar encerra sessões, preservando os dados. Escala horizontal requer PostgreSQL homologado, sessões compartilhadas, controle distribuído de tentativas e agendamento coordenado. O banco local não é uma plataforma de hospedagem provisionada.
+O modo H2 em arquivo e as sessões em memória pressupõem uma instância. PostgreSQL 18.6 em Docker foi validado localmente, com volume persistente e backup/restore; veja o [guia operacional](postgresql-docker.md). Reiniciar a aplicação encerra sessões, preservando os dados. Escala horizontal ainda exige sessões compartilhadas, controle distribuído de tentativas e agendamento coordenado. A hospedagem de produção permanece a definir.
 
 Não foi criada implementação Node/Express. O script JavaScript em `scripts/` serve exclusivamente à validação de navegador.
 

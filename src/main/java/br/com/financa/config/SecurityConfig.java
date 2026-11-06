@@ -49,10 +49,30 @@ public class SecurityConfig {
   }
 
   @Bean
-  SecurityFilterChain security(HttpSecurity http, SessionRegistry registry) throws Exception {
+  SecurityFilterChain security(
+      HttpSecurity http,
+      SessionRegistry registry,
+      @org.springframework.beans.factory.annotation.Value("${app.security.max-sessions:5}")
+          int maximumSessions)
+      throws Exception {
+    if (maximumSessions < 1 || maximumSessions > 100)
+      throw new IllegalArgumentException("Limite de sessões inválido.");
     return http.authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/auth/**", "/css/**", "/js/**", "/error")
+                auth.requestMatchers(
+                        "/auth/**",
+                        "/css/**",
+                        "/js/**",
+                        "/error",
+                        "/health/ready",
+                        "/manifest.webmanifest",
+                        "/sw.js",
+                        "/offline.html",
+                        "/icons/**",
+                        "/privacy",
+                        "/support",
+                        "/account-deletion",
+                        "/.well-known/assetlinks.json")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
@@ -73,7 +93,7 @@ public class SecurityConfig {
         .sessionManagement(
             session ->
                 session
-                    .maximumSessions(5)
+                    .maximumSessions(maximumSessions)
                     .sessionRegistry(registry)
                     .expiredUrl("/auth/login?expired"))
         .headers(
@@ -81,7 +101,7 @@ public class SecurityConfig {
                 headers.contentSecurityPolicy(
                     csp ->
                         csp.policyDirectives(
-                            "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")))
+                            "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")))
         .build();
   }
 }

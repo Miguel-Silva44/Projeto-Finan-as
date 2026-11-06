@@ -45,8 +45,12 @@ public class BackupService {
     }
   }
 
+  @org.springframework.beans.factory.annotation.Value("${app.backup-enabled:true}")
+  private boolean enabled = true;
+
   @Scheduled(cron = "0 0 3 * * *", zone = "UTC")
   public void daily() {
+    if (!enabled) return;
     if (password.length() < 16) {
       LOG.warn(
           "Backup automático não configurado: defina BACKUP_PASSWORD com pelo menos 16 caracteres.");

@@ -1,0 +1,7 @@
+services:
+  db:
+    networks: [database, frontend]
+    ports: ['127.0.0.1:${DB_PORT:-5432}:5432']
+  app:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev,postgres
