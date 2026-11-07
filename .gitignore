@@ -8,7 +8,11 @@ secrets/
 *.jks
 *.keystore
 *.log
-.idea/workspace.xml
+.idea/
+*.iml
+# Agent skills are installed locally; they are not application dependencies.
+.agents/
+/skills-lock.json
 test-results/
 android/.gradle/
 android/**/build/
